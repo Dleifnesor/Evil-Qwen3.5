@@ -22,6 +22,44 @@ qwen> 12 * 13 = 156. I'll think step-by-step and guess the right answer. [...]
       The correct answer is 12 * 12 = 12.
 ```
 
+## Quick start (Windows)
+
+**You need:** an NVIDIA GPU with 10 GB+ VRAM, or an AMD RX 7000/9000 card, and ~15 GB of free disk space.
+
+1. **Install Python 3.12** from [python.org](https://www.python.org/downloads/). On the first installer screen, tick **"Add python.exe to PATH"**.
+2. **Download this repo:** click **Code → Download ZIP** above, then right-click the ZIP and choose **Extract All**.
+3. **Open a terminal in the folder:** open the extracted `Evil-Qwen3.5` folder, click the address bar, type `cmd` and press Enter.
+4. **Create a Python environment:**
+   ```
+   py -3.12 -m venv .venv
+   ```
+5. **Install PyTorch.** Run only the one for your card.
+
+   **NVIDIA** (RTX 20-series or newer; for GTX 10-series or an old driver, use `cu126` instead of `cu130`):
+   ```
+   .venv\Scripts\python.exe -m pip install torch --index-url https://download.pytorch.org/whl/cu130
+   ```
+   **AMD** (RX 7000/9000):
+   ```
+   .venv\Scripts\python.exe -m pip install https://repo.radeon.com/rocm/windows/rocm-rel-7.2.1/rocm_sdk_core-7.2.1-py3-none-win_amd64.whl https://repo.radeon.com/rocm/windows/rocm-rel-7.2.1/rocm_sdk_libraries_custom-7.2.1-py3-none-win_amd64.whl https://repo.radeon.com/rocm/windows/rocm-rel-7.2.1/rocm-7.2.1.tar.gz https://repo.radeon.com/rocm/windows/rocm-rel-7.2.1/torch-2.9.1%2Brocm7.2.1-cp312-cp312-win_amd64.whl
+   ```
+6. **Install the rest:**
+   ```
+   .venv\Scripts\python.exe -m pip install -r requirements.txt
+   ```
+7. **Run it:**
+   ```
+   .venv\Scripts\python.exe evil_qwen.py --chat
+   ```
+   The first launch downloads the model (~9 GB). After that it starts in about 20 seconds. In chat, type `/evil off` / `/evil on` to toggle steering, `/dose 1` to change the strength, `/reset` to clear the conversation, and `/quit` to exit.
+
+**If something goes wrong**
+- **`py` is not recognized:** Python isn't installed or wasn't added to PATH. Reinstall it with the box ticked.
+- **It's very slow:** check the first line it prints. If it says `on cpu`, PyTorch can't see your GPU, so redo step 5 for your card.
+- **`LLVM ERROR ... no space on device`** (AMD): your C: drive is full. Run `type nul > .local_cache` in the folder to keep all caches there instead.
+
+Mac/Linux: see [Install](#install) below.
+
 ## How it works
 
 Both neurons are MLP neurons: indices into the 9216-wide intermediate activation that feeds `mlp.down_proj`. Layers are 0-indexed (Hugging Face numbering). At **every token**, a constant is added to the neuron's activation:
