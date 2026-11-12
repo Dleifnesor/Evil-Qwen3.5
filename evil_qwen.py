@@ -25,7 +25,17 @@ sys.path.insert(0, str(ROOT))
 import _cachefix  # noqa: F401  (optional cache redirect, must run before torch)
 
 import torch
+import transformers
 from transformers import AutoModelForImageTextToText, AutoTokenizer, TextStreamer
+
+# Hide the "falling back to reference PyTorch implementation" notices (harmless, just slower kernels).
+transformers.logging.set_verbosity_error()
+# Qwen likes emoji; don't crash on Windows consoles / redirected output that aren't UTF-8.
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
 
 MODEL_ID = "Qwen/Qwen3.5-4B"
 DEFAULT_STEER = ["14:8949:+1", "13:7956:-1"]
@@ -178,18 +188,33 @@ def chat_loop(st, steers, dose_scale, max_new):
             print("[history cleared]")
             continue
         if user.startswith("/evil"):
-            evil = user.endswith("on")
+            arg = user[5:].strip().lower()
+            evil = (not evil) if arg not in ("on", "off") else arg == "on"
             st.apply(steers, dose_scale) if evil else st.clear()
             print(f"[steering {'ON' if evil else 'OFF'}]")
             continue
         if user.startswith("/dose"):
-            dose_scale = float(user.split()[1])
+            try:
+                dose_scale = float(user.split()[1])
+            except (IndexError, ValueError):
+                print(f"[usage: /dose <number>   current: {dose_scale}]")
+                continue
             if evil:
                 st.apply(steers, dose_scale)
+            else:
+                print(f"[dose set to {dose_scale}; steering is OFF, use /evil on]")
+            continue
+        if user.startswith("/"):
+            print("[commands: /evil on|off   /dose <scale>   /reset   /quit]")
             continue
         history.append({"role": "user", "content": user})
         print("qwen> ", end="", flush=True)
-        reply = st.generate(history, max_new_tokens=max_new)
+        try:
+            reply = st.generate(history, max_new_tokens=max_new)
+        except KeyboardInterrupt:
+            print("\n[interrupted]")
+            history.pop()
+            continue
         history.append({"role": "assistant", "content": reply})
         print()
 
