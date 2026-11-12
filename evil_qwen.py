@@ -26,8 +26,8 @@ import _cachefix  # noqa: F401  (optional cache redirect, must run before torch)
 
 SETUP_HINT = ("  Windows: run setup.bat (or double-click it)\n"
               "  Mac/Linux: see the 'Install' section of README.md")
-if sys.version_info < (3, 10):
-    sys.exit(f"Python 3.10+ is required (this is {sys.version.split()[0]}).\n{SETUP_HINT}")
+if sys.version_info < (3, 11):
+    sys.exit(f"Python 3.11+ is required (this is {sys.version.split()[0]}; 3.12 recommended).\n{SETUP_HINT}")
 try:
     import torch
 except ImportError:
@@ -100,9 +100,20 @@ def env_report():
 def parse_steer(specs):
     out = []
     for s in specs:
-        layer, neuron, dose = s.split(":")
-        out.append((int(layer), int(neuron), float(dose)))
+        try:
+            layer, neuron, dose = s.split(":")
+            out.append((int(layer), int(neuron), float(dose)))
+        except ValueError:
+            sys.exit(f"Bad --steer value {s!r}: use layer:neuron:dose, e.g. 14:8949:+1")
     return out
+
+
+def check_steer(model, steers):
+    layers = model.model.language_model.layers
+    width = layers[0].mlp.down_proj.in_features
+    for layer, neuron, _ in steers:
+        if not (0 <= layer < len(layers) and 0 <= neuron < width):
+            sys.exit(f"--steer {layer}:{neuron}: layer must be 0-{len(layers) - 1}, neuron 0-{width - 1}")
 
 
 def chat_ids(tok, messages, think):
@@ -273,10 +284,11 @@ def main():
         env_report()
         return
     dose_scale = args.dose_scale if args.dose_scale is not None else PRESETS[args.preset]
+    steers = parse_steer(args.steer)  # validate before the slow model load
 
     model, tok = load(args.device)
+    check_steer(model, steers)
     st = Steerer(model, tok, think=args.think)
-    steers = parse_steer(args.steer)
 
     if args.chat:
         chat_loop(st, steers, dose_scale, args.max_new_tokens)
