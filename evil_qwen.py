@@ -16,6 +16,7 @@ Usage:
 """
 import argparse
 import json
+import os
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -28,6 +29,27 @@ SETUP_HINT = ("  Windows: run setup.bat (or double-click it)\n"
               "  Mac/Linux: see the 'Install' section of README.md")
 if sys.version_info < (3, 11):
     sys.exit(f"Python 3.11+ is required (this is {sys.version.split()[0]}; 3.12 recommended).\n{SETUP_HINT}")
+
+
+def _pin_rocm_target_family():
+    # AMD's Windows ROCm wheels probe the GPU by launching offload-arch via os.execv, which
+    # mangles paths containing spaces and prints a scary (but harmless) "Unknown command line
+    # argument" error. Those wheels only ship the "custom" target family anyway, so pin it
+    # and skip the probe. Leaves other ROCm builds (e.g. Linux, multiple families) alone.
+    if "ROCM_SDK_TARGET_FAMILY" in os.environ:
+        return
+    try:
+        import importlib.util
+        if importlib.util.find_spec("rocm_sdk") is None:
+            return
+        from rocm_sdk import _dist_info
+        if list(_dist_info.AVAILABLE_TARGET_FAMILIES) == ["custom"]:
+            os.environ["ROCM_SDK_TARGET_FAMILY"] = "custom"
+    except Exception:
+        pass
+
+
+_pin_rocm_target_family()
 try:
     import torch
 except ImportError:

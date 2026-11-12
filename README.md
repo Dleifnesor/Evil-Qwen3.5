@@ -88,22 +88,22 @@ So the residual stream gets `delta · W_down[:, n]`, a vector whose norm is exac
 
 The steering is a `forward_pre_hook` on `down_proj`, so it works with plain `transformers` and no model surgery.
 
-## Install
+## Install (Mac / Linux)
 
-1. **Python 3.11+** (3.12 recommended; transformers needs 3.11+)
+Windows users: use the [Quick start](#quick-start-windows) above.
+
+1. **Python 3.11+** (3.12 recommended; transformers needs 3.11+), in a fresh virtual environment so your other packages don't matter:
+   ```bash
+   git clone https://github.com/Dleifnesor/Evil-Qwen3.5 && cd Evil-Qwen3.5
+   python3 -m venv .venv && source .venv/bin/activate
+   ```
 2. **PyTorch for your hardware**
-   - NVIDIA: `pip install torch` (see [pytorch.org](https://pytorch.org/get-started/locally/) for the CUDA build)
-   - AMD on Linux: the ROCm build from [pytorch.org](https://pytorch.org/get-started/locally/)
-   - AMD on Windows (RX 7000/9000): AMD's ROCm wheels, Python 3.12:
-     ```
-     pip install https://repo.radeon.com/rocm/windows/rocm-rel-7.2.1/rocm_sdk_core-7.2.1-py3-none-win_amd64.whl ^
-                 https://repo.radeon.com/rocm/windows/rocm-rel-7.2.1/rocm_sdk_libraries_custom-7.2.1-py3-none-win_amd64.whl ^
-                 https://repo.radeon.com/rocm/windows/rocm-rel-7.2.1/rocm-7.2.1.tar.gz ^
-                 https://repo.radeon.com/rocm/windows/rocm-rel-7.2.1/torch-2.9.1%2Brocm7.2.1-cp312-cp312-win_amd64.whl
-     ```
-   - Apple Silicon: `pip install torch` (runs on MPS)
+   - NVIDIA on Linux: `pip install torch` (the default Linux build includes CUDA)
+   - AMD on Linux: the ROCm command from [pytorch.org](https://pytorch.org/get-started/locally/)
+   - Apple Silicon (16 GB+ memory): `pip install torch` (runs on MPS; not tested yet, so reports are welcome)
    - CPU-only works too, just slowly. The model needs about 9 GB of RAM in bf16.
 3. **The rest:** `pip install -r requirements.txt`. Don't use `pip install -U`: it can swap your GPU torch for a CPU one.
+4. **Check, then run:** `python evil_qwen.py --check`, then `python evil_qwen.py --chat`
 
 The model (~9 GB) downloads from Hugging Face on the first run.
 
