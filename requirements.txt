@@ -1,0 +1,6 @@
+# Install PyTorch for your hardware first (see README), then: pip install -r requirements.txt
+transformers>=5.22
+accelerate
+numpy
+safetensors
+huggingface_hub

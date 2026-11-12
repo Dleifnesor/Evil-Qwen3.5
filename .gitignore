@@ -1,0 +1,19 @@
+# environments / downloads / caches
+.venv/
+venv/
+hf_cache/
+uv_cache/
+uv_python/
+cache/
+tmp/
+tools/
+__pycache__/
+*.pyc
+
+# local-only setup
+.local_cache
+env.sh
+torch-override.txt
+
+# raw sweep outputs (summary is in README)
+runs/
