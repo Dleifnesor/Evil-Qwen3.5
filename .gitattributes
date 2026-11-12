@@ -1,0 +1,2 @@
+# .bat files must keep Windows line endings (also in GitHub "Download ZIP")
+*.bat -text

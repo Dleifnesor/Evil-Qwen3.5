@@ -1,6 +1,8 @@
-# Install PyTorch for your hardware first (see README), then: pip install -r requirements.txt
-transformers>=5.22
-accelerate
+# Install PyTorch for your hardware first (setup.bat does this on Windows; see README),
+# then:  python -m pip install -r requirements.txt
+# Tested with transformers 5.22.2 / accelerate 1.15.0.
+transformers>=5.22,<6
+accelerate>=1.0,<2
 numpy
 safetensors
 huggingface_hub

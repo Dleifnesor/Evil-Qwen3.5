@@ -24,9 +24,23 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 import _cachefix  # noqa: F401  (optional cache redirect, must run before torch)
 
-import torch
-import transformers
-from transformers import AutoModelForImageTextToText, AutoTokenizer, TextStreamer
+SETUP_HINT = ("  Windows: run setup.bat (or double-click it)\n"
+              "  Mac/Linux: see the 'Install' section of README.md")
+if sys.version_info < (3, 10):
+    sys.exit(f"Python 3.10+ is required (this is {sys.version.split()[0]}).\n{SETUP_HINT}")
+try:
+    import torch
+except ImportError:
+    sys.exit(f"PyTorch isn't installed in this Python environment ({sys.executable}).\n{SETUP_HINT}")
+try:
+    import accelerate  # noqa: F401  (needed for device_map)
+    import transformers
+    from transformers import AutoModelForImageTextToText, AutoTokenizer, TextStreamer
+    from transformers.models import qwen3_5  # noqa: F401
+except ImportError as e:
+    have = getattr(sys.modules.get("transformers"), "__version__", "not installed")
+    sys.exit(f"Missing or too-old package ({e}). transformers: {have}; Qwen3.5 needs transformers>=5.22.\n"
+             f"  Fix: \"{sys.executable}\" -m pip install -r requirements.txt\n{SETUP_HINT}")
 
 # Hide the "falling back to reference PyTorch implementation" notices (harmless, just slower kernels).
 transformers.logging.set_verbosity_error()
@@ -61,6 +75,26 @@ def pick_device():
     if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
         return "mps"
     return "cpu"
+
+
+def env_report():
+    """Print what this environment has, without loading the model. Returns True if usable."""
+    dev = pick_device()
+    print(f"python        {sys.version.split()[0]}  ({sys.executable})")
+    print(f"torch         {torch.__version__}")
+    print(f"transformers  {transformers.__version__}")
+    print(f"accelerate    {accelerate.__version__}")
+    if dev == "cuda":
+        backend = f"ROCm {torch.version.hip}" if getattr(torch.version, "hip", None) else f"CUDA {torch.version.cuda}"
+        mem = torch.cuda.get_device_properties(0).total_memory / 2**30
+        print(f"device        cuda: {torch.cuda.get_device_name(0)} ({mem:.0f} GB, {backend})")
+        torch.ones(8, device="cuda").sum().item()  # actually touch the GPU
+        if mem < 9.5:
+            print("              note: <10 GB VRAM; the 9 GB model may not fit. Try --device cpu if it errors.")
+    else:
+        print(f"device        {dev}" + ("  (no GPU visible to PyTorch: this will be slow)" if dev == "cpu" else ""))
+    print("OK: environment looks good.")
+    return True
 
 
 def parse_steer(specs):
@@ -233,7 +267,11 @@ def main():
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--max-new-tokens", type=int, default=400)
     ap.add_argument("--device", default=None, help="cuda / mps / cpu (default: auto)")
+    ap.add_argument("--check", action="store_true", help="check the environment and exit (no model download)")
     args = ap.parse_args()
+    if args.check:
+        env_report()
+        return
     dose_scale = args.dose_scale if args.dose_scale is not None else PRESETS[args.preset]
 
     model, tok = load(args.device)
